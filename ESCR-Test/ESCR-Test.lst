@@ -1,0 +1,1016 @@
+# file opened: ESCR-Test.asm
+  1   0000                  device ZXSPECTRUM128
+  2   0000
+  3   0000              	org #6000
+  4   6000              start_
+  5   6000 F3           	di
+  6   6001 21 00 58     	ld hl,#5800
+  7   6004 11 01 58     	ld de,#5801
+  8   6007 36 07        	ld (hl),7
+  9   6009 01 FF 02     	ld bc,768-1
+ 10   600C ED B0        	ldir ;cls attr
+ 11   600E
+ 12   600E 21 60 65     	ld hl,msg_title
+ 13   6011 CD 77 63     	call print
+ 14   6014 CD 16 63     	call print_dump
+ 15   6017              wait_cl
+ 16   6017 CD 42 60     	call pause
+ 17   601A 3E F7        	ld a,#f7
+ 18   601C DB FE        	in a,(#fe)
+ 19   601E CB 47        	bit 0,a ;1
+ 20   6020 CC 27 61     	call z,test_vram
+ 21   6023 CB 4F        	bit 1,a ;2
+ 22   6025 CC D5 61     	call z,test_sdram
+ 23   6028 CB 57        	bit 2,a ;3
+ 24   602A CC 77 62     	call z,show_tab
+ 25   602D CB 5F        	bit 3,a ;4
+ 26   602F CC 7B 60     	call z,load_pic
+ 27   6032 CB 67        	bit 4,a ;5
+ 28   6034 CC 26 63     	call z,move_pic_h
+ 29   6037
+ 30   6037 3E EF        	ld a,#ef
+ 31   6039 DB FE        	in a,(#fe)
+ 32   603B CB 67        	bit 4,a ;6
+ 33   603D CC 46 63     	call z,move_pic_v
+ 34   6040 18 D5        	jr wait_cl
+ 35   6042
+ 36   6042
+ 37   6042
+ 38   6042              pause
+ 39   6042 01 E8 03     	ld bc,1000 ;пауза
+ 40   6045              pause1
+ 41   6045 0B           	dec bc
+ 42   6046 78           	ld a,b
+ 43   6047 B1           	or c
+ 44   6048 20 FB        	jr nz,pause1
+ 45   604A C9           	ret
+ 46   604B
+ 47   604B
+ 48   604B
+ 49   604B
+ 50   604B              scr_on_map_off
+ 51   604B 01 5B 00     	ld bc,#005b
+ 52   604E 3E 01        	ld a,%00000001 ;включить экран отключить маппинг
+ 53   6050 ED 79        	out (c),a
+ 54   6052 C9           	ret
+ 55   6053
+ 56   6053              scr_off_map_off
+ 57   6053 01 5B 00     	ld bc,#005b
+ 58   6056 3E 00        	ld a,%00000000 ;отключить экран и маппинг
+ 59   6058 ED 79        	out (c),a
+ 60   605A C9           	ret
+ 61   605B
+ 62   605B              scr_off_map_sdram_on
+ 63   605B 01 5B 00     	ld bc,#005b
+ 64   605E 3E 30        	ld a,%00110000 ;включить мапинг sdram отключить экран
+ 65   6060 ED 79        	out (c),a
+ 66   6062 C9           	ret
+ 67   6063
+ 68   6063              scr_off_map_vram_on
+ 69   6063 01 5B 00     	ld bc,#005b
+ 70   6066 3E 10        	ld a,%00010000 ;включить мапинг vram отключить экран
+ 71   6068 ED 79        	out (c),a
+ 72   606A C9           	ret
+ 73   606B
+ 74   606B              scr_no_map_sdram_on
+ 75   606B 01 5B 00     	ld bc,#005b
+ 76   606E 3E 31        	ld a,%00110001 ;включить мапинг sdram включить экран
+ 77   6070 ED 79        	out (c),a
+ 78   6072 C9           	ret
+ 79   6073
+ 80   6073              scr_on_map_vram_on
+ 81   6073 01 5B 00     	ld bc,#005b
+ 82   6076 3E 11        	ld a,%00010001 ;включить мапинг vram включить экран
+ 83   6078 ED 79        	out (c),a
+ 84   607A C9           	ret
+ 85   607B
+ 86   607B
+ 87   607B              load_pic_addr equ #8000
+ 88   607B              load_pic
+ 89   607B              	;загрузить картинку
+ 90   607B CD 4B 60     	call scr_on_map_off
+ 91   607E 21 E0 65     	ld hl,file_pic_name
+ 92   6081 0E 13        	ld      c,#13 ;move file info to syst var
+ 93   6083 CD 13 3D         call    #3d13
+ 94   6086 79           	ld      a,c
+ 95   6087 FE FF        	cp 		#ff
+ 96   6089 CA 1B 61     	jp 		z,read_cfg_err
+ 97   608C 0E 0A            ld      c,#0a ;find file
+ 98   608E CD 13 3D         call    #3d13
+ 99   6091 79               ld      a,c
+100   6092 FE FF        	cp 		#ff
+101   6094 CA 1B 61     	jp 		z,read_cfg_err ;если не нашли файла
+102   6097 0E 08            ld      c,#08 ;read file title
+103   6099 CD 13 3D         call    #3d13
+104   609C 79           	ld      a,c
+105   609D FE FF        	cp 		#ff
+106   609F 28 7A        	jr 		z,read_cfg_err
+107   60A1 21 00 80         ld      hl,load_pic_addr ;куда
+108   60A4 ED 5B EB 5C      ld      de,(#5ceb) ;начало файла сектор дорожка
+109   60A8 01 05 61         ld      bc,#6105 ;считать 32*3+1 сектора
+110   60AB CD 13 3D         call    #3d13
+111   60AE 79           	ld      a,c
+112   60AF FE FF        	cp 		#ff
+113   60B1 28 68        	jr 		z,read_cfg_err
+114   60B3
+115   60B3 F3           	di
+116   60B4              	;перекинуть
+117   60B4              	;0
+118   60B4 CD 73 60     	call scr_on_map_vram_on
+119   60B7 01 5B 02     	ld bc,#025b
+120   60BA 3E 00        	ld a,0 ;страница vram
+121   60BC ED 79        	out (c),a
+122   60BE 21 00 80     	ld hl,load_pic_addr
+123   60C1 11 00 00     	ld de,#0000
+124   60C4 01 00 20     	ld bc,32*256
+125   60C7 ED B0        	ldir
+126   60C9              	;1
+127   60C9 01 5B 02     	ld bc,#025b
+128   60CC 3E 01        	ld a,1 ;страница vram
+129   60CE ED 79        	out (c),a
+130   60D0 21 00 A0     	ld hl,load_pic_addr+8192
+131   60D3 11 00 00     	ld de,#0000
+132   60D6 01 00 20     	ld bc,32*256
+133   60D9 ED B0        	ldir
+134   60DB              	;2
+135   60DB 01 5B 02     	ld bc,#025b
+136   60DE 3E 02        	ld a,2 ;страница vram
+137   60E0 ED 79        	out (c),a
+138   60E2 21 00 C0     	ld hl,load_pic_addr+8192+8192
+139   60E5 11 00 00     	ld de,#0000
+140   60E8 01 00 20     	ld bc,32*256
+141   60EB ED B0        	ldir
+142   60ED
+143   60ED              	;загрузить палитру
+144   60ED 21 00 E0     	ld hl,load_pic_addr+#6000 ;в конце файла
+145   60F0 01 5B 10     	ld bc,#105b
+146   60F3 DD 2E 10     	ld ixl,16
+147   60F6              load_pic_pal_cl
+148   60F6 7E           	ld a,(hl)
+149   60F7 ED 79        	out (c),a
+150   60F9 23           	inc hl
+151   60FA 04           	inc b
+152   60FB DD 2D        	dec ixl
+153   60FD 20 F7        	jr nz,load_pic_pal_cl
+154   60FF
+155   60FF 21 41 66     	ld hl,msg_file_ok
+156   6102 CD 77 63     	call print
+157   6105 CD 16 63     	call print_dump
+158   6108
+159   6108 CD 4B 60     	call scr_on_map_off
+160   610B
+161   610B 3A E5 65     	ld a,(file_pic_name+5) ;следующая картинка
+162   610E 3C           	inc a
+163   610F FE 36        	cp "6"
+164   6111 38 02        	jr c,load_pic_next
+165   6113 3E 31        	ld a,"1"
+166   6115              load_pic_next
+167   6115 32 E5 65     	ld (file_pic_name+5),a
+168   6118
+169   6118
+170   6118 3E FF        	ld a,255
+171   611A C9           	ret
+172   611B
+173   611B              read_cfg_err
+174   611B 21 EA 65     	ld hl,msg_file_error
+175   611E CD 77 63     	call print
+176   6121 CD 16 63     	call print_dump
+177   6124 3E FF        	ld a,255
+178   6126 C9           	ret
+179   6127
+180   6127
+181   6127
+182   6127
+183   6127
+184   6127
+185   6127              test_vram
+186   6127 F3           	di
+187   6128 CD 63 60     	call scr_off_map_vram_on
+188   612B
+189   612B 21 FD 65     	ld hl,msg_write_ram
+190   612E CD 77 63     	call print
+191   6131 CD 16 63     	call print_dump
+192   6134
+193   6134              	;запись
+194   6134 3E FF        	ld a,255
+195   6136 32 02 63     	ld (flag),a
+196   6139 DD 2E 03     	ld ixl,3 ;станиц всего 3
+197   613C              vram_loop1
+198   613C 3A 02 63     	ld a,(flag)
+199   613F 3C           	inc a
+200   6140 CD C9 61     	call print_num
+201   6143 32 02 63     	ld (flag),a
+202   6146 01 5B 02     	ld bc,#025b ;set page
+203   6149 ED 79        	out (c),a
+204   614B
+205   614B ED 78        	in a,(c)
+206   614D D3 FE        	out (254),a
+207   614F
+208   614F 21 00 00     	ld hl,0
+209   6152 11 01 00     	ld de,1
+210   6155 01 FF 1F     	ld bc,#2000-1 ;8192
+211   6158 77           	ld (hl),a
+212   6159 ED B0        	ldir
+213   615B
+214   615B DD 2D        	dec ixl
+215   615D 20 DD        	jr nz,vram_loop1
+216   615F
+217   615F CD 42 60     	call pause
+218   6162              	;теперь чтение
+219   6162
+220   6162 21 0C 66     	ld hl,msg_read_ram
+221   6165 CD 77 63     	call print
+222   6168 CD 16 63     	call print_dump
+223   616B
+224   616B 3E FF        	ld a,255
+225   616D 32 02 63     	ld (flag),a
+226   6170 DD 2E 03     	ld ixl,3 ;станиц всего 3
+227   6173              vram_loop2
+228   6173 3A 02 63     	ld a,(flag)
+229   6176 3C           	inc a
+230   6177 CD C9 61     	call print_num
+231   617A 32 02 63     	ld (flag),a
+232   617D 01 5B 02     	ld bc,#025b ;set page
+233   6180 ED 79        	out (c),a
+234   6182
+235   6182 ED 78        	in a,(c)
+236   6184 D3 FE        	out (254),a
+237   6186 32 C8 61     	ld (vram_val),a
+238   6189
+239   6189 21 00 00     	ld hl,0
+240   618C 01 00 20     	ld bc,#2000 ;8192
+241   618F              vram_loop2_cl
+242   618F 3A C8 61     	ld a,(vram_val)
+243   6192 BE           	cp (hl)
+244   6193 20 19        	jr nz,vram_loop2_err
+245   6195 23           	inc hl
+246   6196 0B           	dec bc
+247   6197 78           	ld a,b
+248   6198 B1           	or c
+249   6199 20 F4        	jr nz,vram_loop2_cl
+250   619B
+251   619B
+252   619B DD 2D        	dec ixl
+253   619D 20 D4        	jr nz,vram_loop2
+254   619F
+255   619F 21 1B 66     	ld hl,msg_ram_ok
+256   61A2 CD 77 63     	call print
+257   61A5 CD 16 63     	call print_dump
+258   61A8 CD 42 60     	call pause
+259   61AB 3E FF        	ld a,255
+260   61AD C9           	ret
+261   61AE
+262   61AE
+263   61AE              vram_loop2_err
+264   61AE 21 2E 66     	ld hl,msg_ram_error
+265   61B1 CD 77 63     	call print
+266   61B4 2A C8 61     	ld hl,(vram_val)
+267   61B7 26 00        	ld h,0
+268   61B9 CD EE 64     	call toDecimal
+269   61BC CD 77 63     	call print ;где ошибка
+270   61BF CD 16 63     	call print_dump
+271   61C2 CD 42 60     	call pause
+272   61C5 3E FF        	ld a,255
+273   61C7 C9           	ret
+274   61C8
+275   61C8 00           vram_val db 0;
+276   61C9
+277   61C9
+278   61C9
+279   61C9
+280   61C9
+281   61C9              print_num
+282   61C9 F5           	push af
+283   61CA 6F           	ld l,a
+284   61CB 26 00        	ld h,0
+285   61CD CD EE 64     	call toDecimal
+286   61D0 CD 77 63     	call print ;где ошибка
+287   61D3 F1           	pop af
+288   61D4 C9           	ret
+289   61D5
+290   61D5
+291   61D5
+292   61D5
+293   61D5
+294   61D5              test_sdram
+295   61D5 F3           	di
+296   61D6 CD 5B 60     	call scr_off_map_sdram_on
+297   61D9
+298   61D9 21 FD 65     	ld hl,msg_write_ram
+299   61DC CD 77 63     	call print
+300   61DF CD 16 63     	call print_dump
+301   61E2
+302   61E2              	;запись
+303   61E2 3E FF        	ld a,255
+304   61E4 32 02 63     	ld (flag),a
+305   61E7 DD 2E 00     	ld ixl,0 ;станиц всего 256
+306   61EA              sdram_loop1
+307   61EA 3A 02 63     	ld a,(flag)
+308   61ED 3C           	inc a
+309   61EE CD C9 61     	call print_num
+310   61F1 32 02 63     	ld (flag),a
+311   61F4 01 5B 01     	ld bc,#015b ;set page
+312   61F7 ED 79        	out (c),a
+313   61F9
+314   61F9 ED 78        	in a,(c)
+315   61FB D3 FE        	out (254),a
+316   61FD
+317   61FD 21 00 00     	ld hl,0
+318   6200 11 01 00     	ld de,1
+319   6203 01 FF 3F     	ld bc,#4000-1 ;16384
+320   6206 77           	ld (hl),a
+321   6207 ED B0        	ldir
+322   6209
+323   6209 DD 2D        	dec ixl
+324   620B 20 DD        	jr nz,sdram_loop1
+325   620D
+326   620D CD 42 60     	call pause
+327   6210              	;теперь чтение
+328   6210
+329   6210 21 0C 66     	ld hl,msg_read_ram
+330   6213 CD 77 63     	call print
+331   6216 CD 16 63     	call print_dump
+332   6219
+333   6219 3E FF        	ld a,255
+334   621B 32 02 63     	ld (flag),a
+335   621E DD 2E 00     	ld ixl,0 ;станиц всего 256
+336   6221              sdram_loop2
+337   6221 3A 02 63     	ld a,(flag)
+338   6224 3C           	inc a
+339   6225 CD C9 61     	call print_num
+340   6228 32 02 63     	ld (flag),a
+341   622B 01 5B 01     	ld bc,#015b ;set page
+342   622E ED 79        	out (c),a
+343   6230
+344   6230 ED 78        	in a,(c)
+345   6232 D3 FE        	out (254),a
+346   6234 32 76 62     	ld (sdram_val),a
+347   6237
+348   6237 21 00 00     	ld hl,0
+349   623A 01 00 40     	ld bc,#4000 ;16384
+350   623D              sdram_loop2_cl
+351   623D 3A 76 62     	ld a,(sdram_val)
+352   6240 BE           	cp (hl)
+353   6241 20 19        	jr nz,sdram_loop2_err
+354   6243 23           	inc hl
+355   6244 0B           	dec bc
+356   6245 78           	ld a,b
+357   6246 B1           	or c
+358   6247 20 F4        	jr nz,sdram_loop2_cl
+359   6249
+360   6249
+361   6249 DD 2D        	dec ixl
+362   624B 20 D4        	jr nz,sdram_loop2
+363   624D
+364   624D 21 1B 66     	ld hl,msg_ram_ok
+365   6250 CD 77 63     	call print
+366   6253 CD 16 63     	call print_dump
+367   6256 CD 42 60     	call pause
+368   6259 3E FF        	ld a,255
+369   625B C9           	ret
+370   625C
+371   625C
+372   625C              sdram_loop2_err
+373   625C 21 2E 66     	ld hl,msg_ram_error
+374   625F CD 77 63     	call print
+375   6262 2A 76 62     	ld hl,(sdram_val)
+376   6265 26 00        	ld h,0
+377   6267 CD EE 64     	call toDecimal
+378   626A CD 77 63     	call print ;где ошибка
+379   626D CD 16 63     	call print_dump
+380   6270 CD 42 60     	call pause
+381   6273 3E FF        	ld a,255
+382   6275 C9           	ret
+383   6276
+384   6276 00           sdram_val db 0;
+385   6277
+386   6277
+387   6277
+388   6277
+389   6277
+390   6277
+391   6277
+392   6277
+393   6277
+394   6277
+395   6277
+396   6277
+397   6277
+398   6277              show_tab
+399   6277              	;сначала заполнить страницы
+400   6277 F3           	di
+401   6278 CD 63 60     	call scr_off_map_vram_on
+402   627B
+403   627B 3E FF        	ld a,255
+404   627D 32 02 63     	ld (flag),a
+405   6280
+406   6280 DD 2E 03     	ld ixl,3
+407   6283              loop1
+408   6283 3A 02 63     	ld a,(flag)
+409   6286 3C           	inc a
+410   6287 CD C9 61     	call print_num
+411   628A 32 02 63     	ld (flag),a
+412   628D 01 5B 02     	ld bc,#025b ;set page
+413   6290 ED 79        	out (c),a
+414   6292
+415   6292 ED 78        	in a,(c)
+416   6294 D3 FE        	out (254),a
+417   6296
+418   6296 21 00 00     	ld hl,0
+419   6299 11 01 00     	ld de,1
+420   629C 01 FF 1F     	ld bc,#2000-1
+421   629F 77           	ld (hl),a
+422   62A0 ED B0        	ldir
+423   62A2
+424   62A2 DD 2D        	dec ixl
+425   62A4 20 DD        	jr nz,loop1
+426   62A6
+427   62A6              	;заполнить первую страницу полосками
+428   62A6 AF           	xor a
+429   62A7 01 5B 02     	ld bc,#025b ;set page
+430   62AA ED 79        	out (c),a
+431   62AC
+432   62AC 21 00 00     	ld hl,0
+433   62AF 11 04 00     	ld de,4 ;шаг
+434   62B2 01 00 08     	ld bc,#2000/4 ;сколько
+435   62B5
+436   62B5              fill_cl
+437   62B5 36 10        	ld (hl),%00010000 ;синий левый пиксель
+438   62B7 19           	add hl,de
+439   62B8 0B           	dec bc
+440   62B9 78           	ld a,b
+441   62BA B1           	or c
+442   62BB 20 F8        	jr nz,fill_cl
+443   62BD
+444   62BD 3E 12        	ld a,%00010010 ;добавить синюю слева и красную справа
+445   62BF 32 00 00     	ld (#0000),a
+446   62C2              	;ld (#0009),a
+447   62C2
+448   62C2 3E 14        	ld a,%00010100 ;добавить синюю слева и зелёную справа
+449   62C4 32 04 00     	ld (#0004),a
+450   62C7
+451   62C7
+452   62C7 CD 4B 60     	call scr_on_map_off
+453   62CA ED 79        	out (c),a
+454   62CC
+455   62CC
+456   62CC CD 03 63     	call waitkey
+457   62CF
+458   62CF CD 73 60     	call scr_on_map_vram_on
+459   62D2
+460   62D2
+461   62D2 CD 42 60     	call pause
+462   62D5
+463   62D5
+464   62D5 CD 03 63     	call waitkey
+465   62D8
+466   62D8
+467   62D8
+468   62D8 3E FF        	ld a,255
+469   62DA 32 02 63     	ld (flag),a
+470   62DD
+471   62DD              loop2
+472   62DD CD 50 65     	call key_exit ;проверка на выход
+473   62E0
+474   62E0              	;теперь печатать по кругу значения
+475   62E0 3A 02 63     	ld a,(flag)
+476   62E3 3C           	inc a
+477   62E4 FE 03        	cp 3
+478   62E6 38 01        	jr c,loop2_1
+479   62E8 AF           	xor a
+480   62E9
+481   62E9              loop2_1
+482   62E9 32 02 63     	ld (flag),a
+483   62EC
+484   62EC
+485   62EC
+486   62EC
+487   62EC 01 5B 02     	ld bc,#025b ;set page
+488   62EF ED 79        	out (c),a
+489   62F1
+490   62F1 ED 78        	in a,(c)
+491   62F3 D3 FE        	out (254),a
+492   62F5
+493   62F5              loop3
+494   62F5 CD 16 63     	call print_dump
+495   62F8
+496   62F8 AF           	XOR A
+496   62F9 DB FE         IN A,(#FE)
+496   62FB 2F            CPL
+496   62FC E6 1F         AND #1F
+496   62FE
+497   62FE 20 DD        	JR nz,loop2
+498   6300 18 F3        	jr loop3
+499   6302
+500   6302
+501   6302              	;jr loop2
+502   6302 00           flag db 0;
+503   6303
+504   6303
+505   6303
+506   6303              waitkey
+507   6303 F5           	push af
+508   6304 AF           WAITKEY	XOR A
+508   6305 DB FE         IN A,(#FE)
+508   6307 2F            CPL
+508   6308 E6 1F         AND #1F
+508   630A 28 F8          JR z,WAITKEY ;нажать любую
+509   630C AF           WAITKEY1	XOR A
+509   630D DB FE         IN A,(#FE)
+509   630F 2F            CPL
+509   6310 E6 1F         AND #1F
+509   6312 20 F8          JR nz,WAITKEY1 ;отпустить
+510   6314 F1           	pop af
+511   6315 C9           	ret
+512   6316
+513   6316
+514   6316
+515   6316              print_dump
+516   6316 01 A0 02     	ld bc,42*(24-8) ;число букв
+517   6319 21 08 00     	ld hl,#0008 ;адрес
+518   631C 22 E9 64     	ld (posit),hl
+519   631F 22 EC 64     	ld (ytxt),hl
+520   6322 CD 66 63     	call print_
+521   6325 C9           	ret
+522   6326
+523   6326
+524   6326
+525   6326
+526   6326
+527   6326              move_pic_h ;скролл картинки горизонтальный
+528   6326 CD 4B 60     	call scr_on_map_off
+529   6329 FB           	ei
+530   632A AF           	xor a
+531   632B
+532   632B 01 5B 03     	ld bc,#035b
+533   632E ED 79        	out (c),a
+534   6330
+535   6330              move_pic_h1
+536   6330 76           	halt
+537   6331 CD 50 65     	call key_exit
+538   6334              ;	call waitkey
+539   6334 ED 79        	out (c),a
+540   6336 3C           	inc a
+541   6337 FE FF        	cp 255
+542   6339 20 F5        	jr nz,move_pic_h1
+543   633B
+544   633B              move_pic_h2
+545   633B 76           	halt
+546   633C CD 50 65     	call key_exit
+547   633F              ;	call waitkey
+548   633F ED 79        	out (c),a
+549   6341 3D           	dec a
+550   6342 20 F7        	jr nz,move_pic_h2
+551   6344 18 EA        	jr move_pic_h1
+552   6346
+553   6346
+554   6346
+555   6346
+556   6346              move_pic_v ;скролл картинки вертикальный
+557   6346 CD 4B 60     	call scr_on_map_off
+558   6349 FB           	ei
+559   634A AF           	xor a
+560   634B
+561   634B 01 5B 04     	ld bc,#045b
+562   634E ED 79        	out (c),a
+563   6350
+564   6350              move_pic_v1
+565   6350 76           	halt
+566   6351 CD 50 65     	call key_exit
+567   6354 ED 79        	out (c),a
+568   6356 3C           	inc a
+569   6357 FE BF        	cp 191
+570   6359 20 F5        	jr nz,move_pic_v1
+571   635B
+572   635B              move_pic_v2
+573   635B 76           	halt
+574   635C CD 50 65     	call key_exit
+575   635F ED 79        	out (c),a
+576   6361 3D           	dec a
+577   6362 20 F7        	jr nz,move_pic_v2
+578   6364 18 EA        	jr move_pic_v1
+579   6366
+580   6366
+581   6366
+582   6366              ;печать до символа 0
+583   6366              ;hl - text address
+584   6366              ;13-enter
+585   6366              ;16-color(атрибуты 128+64+pap*8+ink)
+586   6366              ;20-inverse
+587   6366              ;21-отступ от левого края
+588   6366              ;22-at
+589   6366              print_  ;var 2: print text lenght in bc
+590   6366 7E                   ld      a,(hl)
+591   6367 CD E9 63             call    prsym
+592   636A 23                   inc     hl
+593   636B 0B                   dec     bc
+594   636C 78                   ld      a,b
+595   636D B1                   or      c
+596   636E 20 F6                jr      nz,print_
+597   6370 C9                   ret
+598   6371 E1           aupr    pop     hl
+599   6372 CD 77 63             call    print
+600   6375 E5                   push    hl
+601   6376 C9                   ret
+602   6377              ;start print to 0
+603   6377 7E           print   ld      a,(hl)
+604   6378 23                   inc     hl
+605   6379 B7                   or      a
+606   637A C8                   ret     z
+607   637B FE 17                cp      23
+608   637D 38 05                jr      c,prin
+609   637F CD E9 63             call    prsym
+610   6382 18 F3                jr      print
+611   6384              prin
+612   6384 FE 0D                cp      13
+613   6386 20 14                jr      nz,prin0
+614   6388 3A EB 64             ld      a,(space)
+615   638B 32 ED 64             ld      (xtxt),a
+616   638E 3A EC 64             ld      a,(ytxt)
+617   6391 3C                   inc     a
+618   6392 FE 17                cp      23
+619   6394 38 01                jr      c,pr13_0
+620   6396 AF                   xor     a
+621   6397 32 EC 64     pr13_0  ld      (ytxt),a
+622   639A 18 DB                jr      print
+623   639C FE 10        prin0   cp      16
+624   639E 20 07                jr      nz,prin1
+625   63A0 7E                   ld      a,(hl)
+626   63A1 23                   inc     hl
+627   63A2 32 8F 5C             ld      (23695),a
+628   63A5 18 D0                jr      print
+629   63A7 FE 14        prin1   cp      20
+630   63A9 20 23                jr      nz,prin2
+631   63AB 7E                   ld      a,(hl)
+632   63AC 23                   inc     hl
+633   63AD B7                   or      a
+634   63AE 28 10                jr      z,pr20_0
+635   63B0 3E 2F                ld      a,#2f
+636   63B2 32 58 64             ld      (pr0),a
+637   63B5 32 74 64             ld      (pr1),a
+638   63B8 32 84 64             ld      (pr2),a
+639   63BB 32 9F 64             ld      (pr3),a
+640   63BE 18 B7                jr      print
+641   63C0 32 58 64     pr20_0  ld      (pr0),a
+642   63C3 32 74 64             ld      (pr1),a
+643   63C6 32 84 64             ld      (pr2),a
+644   63C9 32 9F 64             ld      (pr3),a
+645   63CC 18 A9                jr      print
+646   63CE FE 16        prin2   cp      22
+647   63D0 20 0C                jr      nz,prin3
+648   63D2 7E                   ld      a,(hl)
+649   63D3 32 EC 64             ld      (ytxt),a
+650   63D6 23                   inc     hl
+651   63D7 7E                   ld      a,(hl)
+652   63D8 32 ED 64             ld      (xtxt),a
+653   63DB 23                   inc     hl
+654   63DC 18 99                jr      print
+655   63DE FE 15        prin3   cp      21
+656   63E0 20 95                jr      nz,print
+657   63E2 7E                   ld      a,(hl)
+658   63E3 23                   inc     hl
+659   63E4 32 EB 64             ld      (space),a
+660   63E7 18 8E                jr      print
+661   63E9              prsym
+662   63E9 F5                   push    af
+663   63EA C5                   push    bc
+664   63EB D5                   push    de
+665   63EC E5                   push    hl
+666   63ED DD E5                push    ix
+667   63EF ED 5B EC 64          ld      de,(ytxt)
+668   63F3 14                   inc     d
+669   63F4 ED 53 EC 64          ld      (ytxt),de
+670   63F8 15                   dec     d
+671   63F9 08                   ex      af,af'
+672   63FA 7A                   ld      a,d
+673   63FB FE 29                cp      41
+674   63FD 38 10                jr      c,prs
+675   63FF 7B                   ld      a,e
+676   6400 3C                   inc     a
+677   6401 FE 18                cp      24
+678   6403 38 01                jr      c,prs1
+679   6405 AF                   xor     a
+680   6406 32 EC 64     prs1    ld      (ytxt),a
+681   6409 3A EB 64             ld      a,(space)
+682   640C 32 ED 64             ld      (xtxt),a
+683   640F 08           prs     ex      af,af'
+684   6410 6F                   ld      l,a
+685   6411 26 00                ld      h,#00
+686   6413 29                   add     hl,hl
+687   6414 29                   add     hl,hl
+688   6415 29                   add     hl,hl
+689   6416 01 54 66             ld      bc,font
+690   6419 09                   add     hl,bc
+691   641A E5                   push    hl
+692   641B 7A                   ld      a,d
+693   641C 87                   add     a,a
+694   641D 57                   ld      d,a
+695   641E 87                   add     a,a
+696   641F 82                   add     a,d
+697   6420 C6 02                add     a,#02
+698   6422 57                   ld      d,a
+699   6423 E6 07                and     #07
+700   6425 08                   ex      af,af'
+701   6426 7A                   ld      a,d
+702   6427 0F                   rrca
+703   6428 0F                   rrca
+704   6429 0F                   rrca
+705   642A E6 1F                and     #1F
+706   642C 57                   ld      d,a
+707   642D 7B                   ld      a,e
+708   642E E6 18                and     #18
+709   6430 C6 40                add     a,#40
+710   6432 67                   ld      h,a
+711   6433 7B                   ld      a,e
+712   6434 E6 07                and     #07
+713   6436 0F                   rrca
+714   6437 0F                   rrca
+715   6438 0F                   rrca
+716   6439 82                   add     a,d
+717   643A 6F                   ld      l,a
+718   643B 22 E9 64             ld      (posit),hl
+719   643E D1                   pop     de
+720   643F 06 08                ld      b,#08
+721   6441 08                   ex      af,af'
+722   6442 28 2B                jr      z,L73C7
+723   6444 DD 60                ld      xh,b
+724   6446 FE 02                cp      #02
+725   6448 28 35                jr      z,L73D6
+726   644A FE 04                cp      #04
+727   644C 28 45                jr      z,L73E9
+728   644E 7E           L73A7   ld      a,(hl)
+729   644F 0F                   rrca
+730   6450 0F                   rrca
+731   6451 47                   ld      b,a
+732   6452 23                   inc     hl
+733   6453 7E                   ld      a,(hl)
+734   6454 E6 0F                and     #0F
+735   6456 4F                   ld      c,a
+736   6457 1A                   ld      a,(de)
+737   6458 00           pr0     nop
+738   6459 E6 FC                and     #FC
+739   645B CB 27                sla     a
+740   645D CB 10                rl      b
+741   645F CB 27                sla     a
+742   6461 CB 10                rl      b
+743   6463 B1                   or      c
+744   6464 77                   ld      (hl),a
+745   6465 2B                   dec     hl
+746   6466 70                   ld      (hl),b
+747   6467 24                   inc     h
+748   6468 13                   inc     de
+749   6469 DD 25                dec     xh
+750   646B 20 E1                jr      nz,L73A7
+751   646D 18 61                jr      prsc1
+752   646F 7E           L73C7   ld      a,(hl)
+753   6470 E6 03                and     #03
+754   6472 4F                   ld      c,a
+755   6473 1A                   ld      a,(de)
+756   6474 00           pr1     nop
+757   6475 E6 FC                and     #FC
+758   6477 B1                   or      c
+759   6478 77                   ld      (hl),a
+760   6479 24                   inc     h
+761   647A 13                   inc     de
+762   647B 10 F2                djnz    L73C7
+763   647D 18 3F                jr      prsc
+764   647F 7E           L73D6   ld      a,(hl)
+765   6480 E6 C0                and     #C0
+766   6482 47                   ld      b,a
+767   6483 1A                   ld      a,(de)
+768   6484 00           pr2     nop
+769   6485 E6 FC                and     #FC
+770   6487 0F                   rrca
+771   6488 0F                   rrca
+772   6489 B0                   or      b
+773   648A 77                   ld      (hl),a
+774   648B 24                   inc     h
+775   648C 13                   inc     de
+776   648D DD 25                dec     xh
+777   648F 20 EE                jr      nz,L73D6
+778   6491 18 2B                jr      prsc
+779   6493 7E           L73E9   ld      a,(hl)
+780   6494 0F                   rrca
+781   6495 0F                   rrca
+782   6496 0F                   rrca
+783   6497 0F                   rrca
+784   6498 47                   ld      b,a
+785   6499 23                   inc     hl
+786   649A 7E                   ld      a,(hl)
+787   649B E6 3F                and     #3F
+788   649D 4F                   ld      c,a
+789   649E 1A                   ld      a,(de)
+790   649F 00           pr3     nop
+791   64A0 E6 FC                and     #FC
+792   64A2 CB 27                sla     a
+793   64A4 CB 10                rl      b
+794   64A6 CB 27                sla     a
+795   64A8 CB 10                rl      b
+796   64AA CB 27                sla     a
+797   64AC CB 10                rl      b
+798   64AE CB 27                sla     a
+799   64B0 CB 10                rl      b
+800   64B2 B1                   or      c
+801   64B3 77                   ld      (hl),a
+802   64B4 2B                   dec     hl
+803   64B5 70                   ld      (hl),b
+804   64B6 24                   inc     h
+805   64B7 13                   inc     de
+806   64B8 DD 25                dec     xh
+807   64BA 20 D7                jr      nz,L73E9
+808   64BC 18 12                jr      prsc1
+809   64BE 2A E9 64     prsc    ld      hl,(posit)
+810   64C1 7C                   ld      a,h
+811   64C2 E6 18                and     #18
+812   64C4 0F                   rrca
+813   64C5 0F                   rrca
+814   64C6 0F                   rrca
+815   64C7 C6 58                add     a,#58
+816   64C9 67                   ld      h,a
+817   64CA 3A 8F 5C             ld      a,(23695)
+818   64CD 77                   ld      (hl),a ;отключена раскраска
+819   64CE 18 12                jr      prse
+820   64D0 2A E9 64     prsc1   ld      hl,(posit)
+821   64D3 7C                   ld      a,h
+822   64D4 E6 18                and     #18
+823   64D6 0F                   rrca
+824   64D7 0F                   rrca
+825   64D8 0F                   rrca
+826   64D9 C6 58                add     a,#58
+827   64DB 67                   ld      h,a
+828   64DC 3A 8F 5C             ld      a,(23695)
+829   64DF 77                   ld      (hl),a
+830   64E0 23                   inc     hl
+831   64E1 77                   ld      (hl),a
+832   64E2 DD E1        prse    pop     ix
+833   64E4 E1                   pop     hl
+834   64E5 D1                   pop     de
+835   64E6 C1                   pop     bc
+836   64E7 F1                   pop     af
+837   64E8 C9                   ret
+838   64E9 00 00        posit   dw      0
+839   64EB 00           space   nop
+840   64EC 00           ytxt    nop
+841   64ED 00           xtxt    nop
+842   64EE
+843   64EE
+844   64EE
+845   64EE              toDecimal		;конвертирует 2 байта в 5 десятичных цифр
+846   64EE              				;на входе в HL число
+847   64EE 11 10 27     			ld de,10000 ;десятки тысяч
+848   64F1 3E FF        			ld a,255
+849   64F3              toDecimal10k
+850   64F3 A7           			and a
+851   64F4 ED 52        			sbc hl,de
+852   64F6 3C           			inc a
+853   64F7 30 FA        			jr nc,toDecimal10k
+854   64F9 19           			add hl,de
+855   64FA C6 30        			add a,48
+856   64FC 32 4A 65     			ld (decimalS),a
+857   64FF 11 E8 03     			ld de,1000 ;тысячи
+858   6502 3E FF        			ld a,255
+859   6504              toDecimal1k
+860   6504 A7           			and a
+861   6505 ED 52        			sbc hl,de
+862   6507 3C           			inc a
+863   6508 30 FA        			jr nc,toDecimal1k
+864   650A 19           			add hl,de
+865   650B C6 30        			add a,48
+866   650D 32 4B 65     			ld (decimalS+1),a
+867   6510 11 64 00     			ld de,100 ;сотни
+868   6513 3E FF        			ld a,255
+869   6515              toDecimal01k
+870   6515 A7           			and a
+871   6516 ED 52        			sbc hl,de
+872   6518 3C           			inc a
+873   6519 30 FA        			jr nc,toDecimal01k
+874   651B 19           			add hl,de
+875   651C C6 30        			add a,48
+876   651E 32 4C 65     			ld (decimalS+2),a
+877   6521 11 0A 00     			ld de,10 ;десятки
+878   6524 3E FF        			ld a,255
+879   6526              toDecimal001k
+880   6526 A7           			and a
+881   6527 ED 52        			sbc hl,de
+882   6529 3C           			inc a
+883   652A 30 FA        			jr nc,toDecimal001k
+884   652C 19           			add hl,de
+885   652D C6 30        			add a,48
+886   652F 32 4D 65     			ld (decimalS+3),a
+887   6532 11 01 00     			ld de,1 ;единицы
+888   6535 3E FF        			ld a,255
+889   6537              toDecimal0001k
+890   6537 A7           			and a
+891   6538 ED 52        			sbc hl,de
+892   653A 3C           			inc a
+893   653B 30 FA        			jr nc,toDecimal0001k
+894   653D 19           			add hl,de
+895   653E C6 30        			add a,48
+896   6540 32 4E 65     			ld (decimalS+4),a
+897   6543 21 47 65     			ld hl,decimalS_
+898   6546 C9           			ret
+899   6547
+900   6547 16 06 00     decimalS_	db 22,6,0
+901   654A 00 00 00...  decimalS	ds 6 ;десятичные цифры
+902   6550
+903   6550
+904   6550
+905   6550
+906   6550              key_exit ;выход если нажата 0
+907   6550 F5           	push af
+908   6551 3E EF        	ld a,#ef
+909   6553 DB FE        	in a,(#fe)
+910   6555 CB 47        	bit 0,a ;0
+911   6557 20 05        	jr nz,key_exit_ex
+912   6559 F1           	pop af
+913   655A 3E FF        	ld a,255
+914   655C E1           	pop hl
+915   655D C9           	ret
+916   655E              key_exit_ex
+917   655E F1           	pop af
+918   655F C9           	ret
+919   6560
+920   6560
+921   6560              msg_title
+922   6560 16 00 00 54  	db 22,0,0,"Test ESCR"
+922   6564 65 73 74 20
+922   6568 45 53 43 52
+923   656C 16 01 00 31  	db 22,1,0,"1 - Test VRAM"
+923   6570 20 2D 20 54
+923   6574 65 73 74 20
+923   6578 56 52 41 4D
+924   657C 16 02 00 32  	db 22,2,0,"2 - Test SDRAM"
+924   6580 20 2D 20 54
+924   6584 65 73 74 20
+924   6588 53 44 52 41
+924   658C 4D
+925   658D 16 03 00 33  	db 22,3,0,"3 - Tuning table"
+925   6591 20 2D 20 54
+925   6595 75 6E 69 6E
+925   6599 67 20 74 61
+925   659D 62 6C 65
+926   65A0 16 04 00 34  	db 22,4,0,"4 - Load pic"
+926   65A4 20 2D 20 4C
+926   65A8 6F 61 64 20
+926   65AC 70 69 63
+927   65AF 16 01 13 35  	db 22,1,19,"5 - Scroll h."
+927   65B3 20 2D 20 53
+927   65B7 63 72 6F 6C
+927   65BB 6C 20 68 2E
+928   65BF 16 02 13 36  	db 22,2,19,"6 - Scroll v."
+928   65C3 20 2D 20 53
+928   65C7 63 72 6F 6C
+928   65CB 6C 20 76 2E
+929   65CF
+930   65CF 16 04 13 30  	db 22,4,19,"0 - Stop test"
+930   65D3 20 2D 20 53
+930   65D7 74 6F 70 20
+930   65DB 74 65 73 74
+931   65DF 00           	db 0
+932   65E0
+933   65E0 70 69 63 30  file_pic_name db "pic001  d",0
+933   65E4 30 31 20 20
+933   65E8 64 00
+934   65EA
+935   65EA              msg_file_error
+936   65EA 16 05 00 10  	db 22,5,0,16,2,"File error!",16,7,0
+936   65EE 02 46 69 6C
+936   65F2 65 20 65 72
+936   65F6 72 6F 72 21
+936   65FA 10 07 00
+937   65FD              msg_write_ram
+938   65FD 16 05 00 57  	db 22,5,0,"Write RAM..",0
+938   6601 72 69 74 65
+938   6605 20 52 41 4D
+938   6609 2E 2E 00
+939   660C              msg_read_ram
+940   660C 16 05 00 52  	db 22,5,0,"Read RAM.. ",0
+940   6610 65 61 64 20
+940   6614 52 41 4D 2E
+940   6618 2E 20 00
+941   661B              msg_ram_ok
+942   661B 16 05 00 10  	db 22,5,0,16,4,"RAM OK     ",16,7,0
+942   661F 04 52 41 4D
+942   6623 20 4F 4B 20
+942   6627 20 20 20 20
+942   662B 10 07 00
+943   662E              msg_ram_error
+944   662E 16 05 00 10  	db 22,5,0,16,2,"RAM error! ",16,7,0
+944   6632 02 52 41 4D
+944   6636 20 65 72 72
+944   663A 6F 72 21 20
+944   663E 10 07 00
+945   6641              msg_file_ok
+946   6641 16 05 00 10  	db 22,5,0,16,4,"File OK    ",16,7,0
+946   6645 04 46 69 6C
+946   6649 65 20 4F 4B
+946   664D 20 20 20 20
+946   6651 10 07 00
+947   6654
+948   6654
+949   6654              font    insert  "FONT.C" ;шрифт
+950   6E54
+951   6E54
+952   6E54              end_
+953   6E54              	SAVETRD "ESCR-Test.TRD",|"ESCR-Test.C",start_,end_-start_
+# file closed: ESCR-Test.asm
